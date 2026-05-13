@@ -2,88 +2,78 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
- 
-# Configuración básica y tema oscuro nativo
-st.set_page_config(page_title="Catalogo de Datos Masivos", layout="wide")
-sns.set_theme(style="dark", palette="pastel")
-plt.rcParams.update({
-    'figure.facecolor': '#0e1117',
-    'axes.facecolor': '#0e1117',
-    'text.color': 'white',
-    'axes.labelcolor': 'white',
-    'xtick.color': 'white',
-    'ytick.color': 'white'
-})
- 
-st.title("Catalogo Estadistico de Resultados")
- 
-# Carga de datos masivos
-try:
-    df = pd.read_csv("datos_masivos_examen.csv")
-except FileNotFoundError:
-    st.error("No se encontró el archivo 'datos_masivos_examen.csv'")
-    st.stop()
- 
-# --- SECCIÓN 1: CATÁLOGO DE MÉTRICAS ---
-st.header("Resumen de Variables")
-cols = st.columns(3)
- 
-metricas = {
-    "Precio Venta": df['precio'],
-    "Nivel de Stock": df['stock'],
-    "Calificacion": df['calificacion']
-}
- 
-for i, (nombre, serie) in enumerate(metricas.items()):
-    with cols[i % 3]:
-        with st.container(border=True):
-            st.subheader(nombre)
-            st.write(f"**Media:** {serie.mean():.2f}")
-            st.write(f"**Mediana:** {serie.median():.2f}")
-            st.write(f"**Moda:** {serie.mode()[0]}")
- 
-# --- SECCIÓN 2: CATÁLOGO DE GRÁFICOS ---
+
+# Configuración y Estilo Dark
+st.set_page_config(page_title="Ventas Cafeteria", layout="wide")
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e0e0e; color: #d4a373; }
+    h1, h2, h3 { color: #faedcd !important; }
+    [data-testid="stMetricValue"] { color: #faedcd !important; }
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border: 1px solid #d4a373 !important;
+        border-radius: 15px;
+        background-color: #1a1a1a;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Carga de datos
+df = pd.read_csv("ventas_cafeteria.csv")
+
+st.title("Sistema de Monitoreo: Cafeterias Premium")
 st.divider()
-st.header("Visualizaciones del Catalogo")
- 
-tab1, tab2, tab3 = st.tabs(["Frecuencias Categoria", "Distribucion Precios", "Datos Crudos"])
- 
-with tab1:
-    col_a, col_b = st.columns(2)
-    frec = df['categoria'].value_counts()
-   
-    with col_a:
-        st.write("**Frecuencia Absoluta (Categorias)**")
-        fig, ax = plt.subplots()
-        frec.plot(kind='bar', ax=ax, color='#8ecae6')
+
+# --- NUEVA DISTRIBUCIÓN: SIDEBAR PARA MÉTRICAS ---
+with st.sidebar:
+    st.header("Resumen del Dia")
+    st.metric("Ventas Totales", f"${df['Precio'].sum():,.0f}")
+    st.metric("Promedio Ticket", f"${df['Precio'].mean():.2f}")
+    st.metric("Espera Media", f"{df['Tiempo_Espera_Min'].mean():.1f} min")
+    st.metric("Satisfaccion", f"{df['Puntaje_Satisfaccion'].mean():.1f}/10")
+    st.divider()
+    st.write("Datos actualizados de 6 sucursales.")
+
+# --- CUERPO PRINCIPAL: CATÁLOGO DE GRÁFICOS ---
+col_main_left, col_main_right = st.columns([1, 1])
+
+plt.style.use('dark_background')
+PALETA_CAFE = ["#603808", "#8B4513", "#D2691E", "#BC8F8F", "#DEB887", "#F5DEB3"]
+
+with col_main_left:
+    with st.container(border=True):
+        st.subheader("Ventas por Sucursal (Frec. Absoluta)")
+        fig1, ax1 = plt.subplots(figsize=(8, 5))
+        sns.countplot(data=df, x='Sucursal', palette=PALETA_CAFE, ax=ax1)
         plt.xticks(rotation=45)
-        st.pyplot(fig)
-       
-    with col_b:
-        st.write("**Frecuencia Relativa (%)**")
-        fig, ax = plt.subplots()
-        frec.plot(kind='pie', autopct='%1.1f%%', ax=ax, startangle=140)
-        ax.set_ylabel('')
-        st.pyplot(fig)
- 
-with tab2:
-    st.write("**Poligono de Frecuencias y Acumulada (Precios)**")
-   
-    # --- SOLUCIÓN AL PROBLEMA DE LA IMAGEN image_70cb20.png ---
-    # Creamos los bins y los convertimos a string inmediatamente para evitar el JSON
-    df['rango_precio'] = pd.cut(df['precio'], bins=10).apply(lambda x: f"{x.left:.2f} - {x.right:.2f}")
-   
-    frec_precio = df['rango_precio'].value_counts().sort_index()
-   
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(frec_precio.index, frec_precio.values, marker='o', label='Absoluta', color='#ffb703')
-    ax.plot(frec_precio.index, frec_precio.cumsum().values, marker='s', label='Acumulada', color='#fb8500')
-   
-    plt.xticks(rotation=45)
+        st.pyplot(fig1)
+
+with col_main_right:
+    with st.container(border=True):
+        st.subheader("Mix de Bebidas (Frec. Relativa)")
+        fig2, ax2 = plt.subplots(figsize=(8, 5))
+        df['Bebida'].value_counts().plot(kind='pie', autopct='%1.1f%%', colors=PALETA_CAFE, ax=ax2, startangle=90)
+        ax2.set_ylabel('')
+        st.pyplot(fig2)
+
+# Sección de Distribución y Acumulados
+st.divider()
+with st.container(border=True):
+    st.subheader("Analisis de Precios y Frecuencia Acumulada")
+    # Generamos los rangos de precios
+    df['rango_p'] = pd.cut(df['Precio'], bins=8).apply(lambda x: f"${x.left:.0f}-${x.right:.0f}")
+    frec_p = df['rango_p'].value_counts().sort_index()
+    
+    fig3, ax3 = plt.subplots(figsize=(14, 5))
+    # Polígono
+    ax3.plot(frec_p.index, frec_p.values, marker='o', color='#faedcd', label='Poligono (Absoluta)', linewidth=3)
+    # Acumulada
+    ax3.plot(frec_p.index, frec_p.cumsum().values, marker='s', color='#d4a373', label='Frec. Acumulada', linestyle='--')
+    
     plt.legend()
-    st.pyplot(fig)
- 
-with tab3:
-    with st.expander("Ver inventario completo de registros"):
-        # Mostramos el DataFrame limpio
-        st.dataframe(df, use_container_width=True)
+    st.pyplot(fig3)
+
+# Tabla al final
+with st.expander("Explorar Registros del Catalogo"):
+    st.dataframe(df, use_container_width=True)
