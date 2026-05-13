@@ -1,71 +1,119 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from statsmodels.stats.weightstats import DescrStatsW
 
-st.set_page_config(page_title="Ventas Cafeteria", layout="wide")
+# --- CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Data Insights Pro", layout="wide", initial_sidebar_state="expanded")
 
+# CSS para estilo Premium (Bordes neón y fondos profundos)
 st.markdown("""
     <style>
-    .stApp { background-color: #0e0e0e; color: #d4a373; }
-    h1, h2, h3 { color: #faedcd !important; }
-    [data-testid="stMetricValue"] { color: #faedcd !important; }
+    .stApp { background-color: #050505; color: #e0e0e0; }
+    [data-testid="stMetricValue"] { color: #00fbff !important; font-size: 32px; }
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        border: 1px solid #d4a373 !important;
-        border-radius: 15px;
-        background-color: #1a1a1a;
+        border: 1px solid #1f1f1f !important;
+        border-radius: 20px;
+        background-color: #0d0d0d;
+        transition: 0.3s;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+        border-color: #00fbff !important;
+        box-shadow: 0px 0px 15px rgba(0, 251, 255, 0.2);
     }
     </style>
     """, unsafe_allow_html=True)
 
-df = pd.read_csv("ventas_cafeteria.csv")
+# --- CARGA DE DATOS ---
+@st.cache_data
+def load_data():
+    df = pd.read_csv("datos_masivos_examen.csv")
+    return df
 
-st.title("Sistema de Monitoreo: Cafeterias Premium")
-st.divider()
+df = load_data()
 
+# --- SIDEBAR: FILTROS INTERACTIVOS ---
 with st.sidebar:
-    st.header("Resumen del Dia")
-    st.metric("Ventas Totales", f"${df['Precio'].sum():,.0f}")
-    st.metric("Promedio Ticket", f"${df['Precio'].mean():.2f}")
-    st.metric("Espera Media", f"{df['Tiempo_Espera_Min'].mean():.1f} min")
-    st.metric("Satisfaccion", f"{df['Puntaje_Satisfaccion'].mean():.1f}/10")
+    st.title("🎛️ Controles")
+    st.write("Filtra el catálogo en tiempo real")
+    categoria_sel = st.multiselect("Seleccionar Categoría", options=df['categoria'].unique(), default=df['categoria'].unique())
+    precio_range = st.slider("Rango de Precio", float(df['precio'].min()), float(df['precio'].max()), (float(df['precio'].min()), float(df['precio'].max())))
+    
     st.divider()
-    st.write("Datos actualizados de 6 sucursales.")
+    st.info("Este dashboard procesa 1,000 registros mediante análisis estadístico avanzado.")
 
-col_main_left, col_main_right = st.columns([1, 1])
+# Filtrado de datos
+df_filtrado = df[(df['categoria'].isin(categoria_sel)) & (df['precio'].between(precio_range[0], precio_range[1]))]
 
-plt.style.use('dark_background')
-PALETA_CAFE = ["#603808", "#8B4513", "#D2691E", "#BC8F8F", "#DEB887", "#F5DEB3"]
+# --- CABECERA ---
+st.title("🚀 Dashboard de Análisis Masivo")
+st.markdown("### Catálogo Automatizado de Resultados Estadísticos")
 
-with col_main_left:
+# --- SECCIÓN 1: MÉTRICAS DINÁMICAS ---
+c1, c2, c3, c4 = st.columns(4)
+with c1:
     with st.container(border=True):
-        st.subheader("Ventas por Sucursal (Frec. Absoluta)")
-        fig1, ax1 = plt.subplots(figsize=(8, 5))
-        sns.countplot(data=df, x='Sucursal', palette=PALETA_CAFE, ax=ax1)
-        plt.xticks(rotation=45)
-        st.pyplot(fig1)
-
-with col_main_right:
+        st.metric("Media de Precio", f"${df_filtrado['precio'].mean():.2f}")
+with c2:
     with st.container(border=True):
-        st.subheader("Mix de Bebidas (Frec. Relativa)")
-        fig2, ax2 = plt.subplots(figsize=(8, 5))
-        df['Bebida'].value_counts().plot(kind='pie', autopct='%1.1f%%', colors=PALETA_CAFE, ax=ax2, startangle=90)
-        ax2.set_ylabel('')
-        st.pyplot(fig2)
+        st.metric("Mediana Stock", f"{df_filtrado['stock'].median():.0f}")
+with c3:
+    with st.container(border=True):
+        st.metric("Moda Calificación", f"{df_filtrado['calificacion'].mode()[0]:.1f}")
+with c4:
+    with st.container(border=True):
+        st.metric("Total Registros", f"{len(df_filtrado)}")
 
 st.divider()
-with st.container(border=True):
-    st.subheader("Analisis de Precios y Frecuencia Acumulada")
-    df['rango_p'] = pd.cut(df['Precio'], bins=8).apply(lambda x: f"${x.left:.0f}-${x.right:.0f}")
-    frec_p = df['rango_p'].value_counts().sort_index()
-    
-    fig3, ax3 = plt.subplots(figsize=(14, 5))
-    ax3.plot(frec_p.index, frec_p.values, marker='o', color='#faedcd', label='Poligono (Absoluta)', linewidth=3)
-    
-    ax3.plot(frec_p.index, frec_p.cumsum().values, marker='s', color='#d4a373', label='Frec. Acumulada', linestyle='--')
-    
-    plt.legend()
-    st.pyplot(fig3)
 
-with st.expander("Explorar Registros del Catalogo"):
-    st.dataframe(df, use_container_width=True)
+# --- SECCIÓN 2: VISUALIZACIÓN AVANZADA ---
+t1, t2, t3 = st.tabs(["📊 Análisis de Frecuencias", "📈 Distribución y Acumulados", "📑 Tabla Maestra"])
+
+with t1:
+    col_left, col_right = st.columns(2)
+    
+    with col_left:
+        with st.container(border=True):
+            st.write("**Frecuencia Absoluta por Categoría**")
+            fig_bar = px.bar(df_filtrado['categoria'].value_counts().reset_index(), 
+                             x='categoria', y='count', 
+                             color='count', color_continuous_scale='Viridis',
+                             template="plotly_dark")
+            st.plotly_chart(fig_bar, use_container_width=True)
+            
+    with col_right:
+        with st.container(border=True):
+            st.write("**Frecuencia Relativa (Participación)**")
+            fig_pie = px.pie(df_filtrado, names='categoria', hole=0.5,
+                             color_discrete_sequence=px.colors.sequential.RdBu,
+                             template="plotly_dark")
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+with t2:
+    with st.container(border=True):
+        st.write("**Polígono de Frecuencias y Curva Acumulada**")
+        
+        # Procesamiento para Polígono
+        bins = 15
+        counts, bin_edges = np.histogram(df_filtrado['precio'], bins=bins)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        cum_sum = counts.cumsum()
+
+        fig_mix = go.Figure()
+        # Línea de Polígono
+        fig_mix.add_trace(go.Scatter(x=bin_centers, y=counts, mode='lines+markers', 
+                                     name='Frec. Absoluta', line=dict(color='#00fbff', width=4)))
+        # Línea de Acumulada
+        fig_mix.add_trace(go.Scatter(x=bin_centers, y=cum_sum, mode='lines', 
+                                     name='Frec. Acumulada', fill='tozeroy', line=dict(color='#ff007c')))
+        
+        fig_mix.update_layout(template="plotly_dark", xaxis_title="Rangos de Precio", yaxis_title="Cantidad")
+        st.plotly_chart(fig_mix, use_container_width=True)
+
+with t3:
+    st.write("Listado detallado basado en filtros aplicados:")
+    st.dataframe(df_filtrado.style.background_gradient(subset=['calificacion'], cmap='Blues'), use_container_width=True)
+
+# Footer
+st.caption("Generado automáticamente para Examen Práctico 2026 | Tecnología Streamlit + Plotly")
