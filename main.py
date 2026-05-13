@@ -3,7 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Configuración y Estilo Dark
 st.set_page_config(page_title="Ventas Cafeteria", layout="wide")
 
 st.markdown("""
@@ -19,13 +18,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Carga de datos
 df = pd.read_csv("ventas_cafeteria.csv")
 
 st.title("Sistema de Monitoreo: Cafeterias Premium")
 st.divider()
 
-# --- NUEVA DISTRIBUCIÓN: SIDEBAR PARA MÉTRICAS ---
 with st.sidebar:
     st.header("Resumen del Dia")
     st.metric("Ventas Totales", f"${df['Precio'].sum():,.0f}")
@@ -35,7 +32,6 @@ with st.sidebar:
     st.divider()
     st.write("Datos actualizados de 6 sucursales.")
 
-# --- CUERPO PRINCIPAL: CATÁLOGO DE GRÁFICOS ---
 col_main_left, col_main_right = st.columns([1, 1])
 
 plt.style.use('dark_background')
@@ -57,23 +53,19 @@ with col_main_right:
         ax2.set_ylabel('')
         st.pyplot(fig2)
 
-# Sección de Distribución y Acumulados
 st.divider()
 with st.container(border=True):
     st.subheader("Analisis de Precios y Frecuencia Acumulada")
-    # Generamos los rangos de precios
     df['rango_p'] = pd.cut(df['Precio'], bins=8).apply(lambda x: f"${x.left:.0f}-${x.right:.0f}")
     frec_p = df['rango_p'].value_counts().sort_index()
     
     fig3, ax3 = plt.subplots(figsize=(14, 5))
-    # Polígono
     ax3.plot(frec_p.index, frec_p.values, marker='o', color='#faedcd', label='Poligono (Absoluta)', linewidth=3)
-    # Acumulada
+    
     ax3.plot(frec_p.index, frec_p.cumsum().values, marker='s', color='#d4a373', label='Frec. Acumulada', linestyle='--')
     
     plt.legend()
     st.pyplot(fig3)
 
-# Tabla al final
 with st.expander("Explorar Registros del Catalogo"):
     st.dataframe(df, use_container_width=True)
